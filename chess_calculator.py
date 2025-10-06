@@ -1,20 +1,63 @@
+import copy
+
 data = {}
 
-def seen_by_black(grid, square):
-    pieces = []
-    black_positions = []
-    white_positions = []
+def seen_by_black(grid):
+    squares = set()
 
     for x in range(8):
-        for y in  range(8):
-            if grid[y][x][0] == "b":
-                pieces.append(grid[y][x])
-                black_positions.append(grid[y][x])
-            if grid[y][x][0] == "w":
-                white_positions.append(grid[y][x])
+        for y in range(8):
+            piece = grid[y][x]
+            if piece == "" or piece[0] == "w":
+                continue
 
-    for i, piece in enumerate(pieces):
-        pass
+            if piece[1] == "p":
+                if x > 0 and y < 7:
+                    squares.add((x - 1, y + 1))
+                if x < 7 and y < 7:
+                    squares.add((x + 1, y + 1))
+            elif piece[1] == "k":
+                for dx in range(-1, 2):
+                    for dy in range(-1, 2):
+                        if dx == 0 and dy == 0: continue
+                        x1, y1 = x + dx, y + dy
+                        if 0 <= x1 <= 7 and 0 <= y1 <= 7:
+                            squares.add((x1, y1))
+            else:
+                moves = calc_moves(grid, (x, y))
+                for move in moves:
+                    squares.add(move)
+
+    return squares
+
+def seen_by_white(grid):
+    squares = set()
+
+    for x in range(8):
+        for y in range(8):
+            piece = grid[y][x]
+            if piece == "" or piece[0] == "b":
+                continue
+
+            if piece[1] == "p":
+                if x > 0 and y > 0:
+                    squares.add((x - 1, y - 1))
+                if x < 7 and y > 0:
+                    squares.add((x + 1, y - 1))
+            elif piece[1] == "k":
+                for dx in range(-1, 2):
+                    for dy in range(-1, 2):
+                        if dx == 0 and dy == 0: continue
+                        x1, y1 = x + dx, y + dy
+                        if 0 <= x1 <= 7 and 0 <= y1 <= 7:
+                            squares.add((x1, y1))
+            else:
+                moves = calc_moves(grid, (x, y))
+                for move in moves:
+                    squares.add(move)
+
+    return squares
+
 
 def clear_pawn_data():
     for i in range(8):
@@ -93,11 +136,26 @@ def move_bk(grid, square):
                     continue
             squares.append((x0, y0))
 
-    if not data["bk was moved"]:
-        if not data["kingside br was moved"] and grid[0][5] == "" and grid[0][6] == "": squares.append((6, 0))
-        if not data["queenside br was moved"] and grid[0][1] == "" and grid[0][2] == "" and grid[0][3] == "": squares.append((2, 0))
+    attacked = seen_by_white(grid)
 
-    return squares
+    if not data["bk was moved"] and not square in attacked:
+        if not data["kingside br was moved"] and grid[0][5] == "" and grid[0][6] == "" and (5, 0) not in attacked:
+            squares.append((6, 0))
+        if not data["queenside br was moved"] and grid[0][1] == "" and grid[0][2] == "" and grid[0][3] == "" and (3, 0) not in attacked and (2, 0) not in attacked:
+            squares.append((2, 0))
+
+    allowed = []
+
+    for i, move in enumerate(squares):
+        x0, y0 = move
+        grid0 = copy.deepcopy(grid)
+        grid0[y0][x0] = "bk"
+        grid0[y][x] = ""
+        if move in seen_by_black(grid0):
+            continue
+        allowed.append(move)
+
+    return allowed
 
 def move_bq(grid, square):
     x, y = square
@@ -223,11 +281,26 @@ def move_wk(grid, square):
                     continue
             squares.append((x0, y0))
 
-    if not data["wk was moved"]:
-        if not data["kingside wr was moved"] and grid[7][5] == "" and grid[7][6] == "": squares.append((6, 7))
-        if not data["queenside wr was moved"] and grid[7][1] == "" and grid[7][2] == "" and grid[7][3] == "": squares.append((2, 7))
+    attacked = seen_by_black(grid)
 
-    return squares
+    if not data["wk was moved"] and not square in attacked:
+        if not data["kingside wr was moved"] and grid[7][5] == "" and grid[7][6] == "" and (5, 7) not in attacked:
+            squares.append((6, 7))
+        if not data["queenside wr was moved"] and grid[7][1] == "" and grid[7][2] == "" and grid[7][3] == "" and (3, 7) not in attacked and (2, 7) not in attacked:
+            squares.append((2, 7))
+
+    allowed = []
+
+    for i, move in enumerate(squares):
+        x0, y0 = move
+        grid0 = copy.deepcopy(grid)
+        grid0[y0][x0] = "wk"
+        grid0[y][x] = ""
+        if move in seen_by_black(grid0):
+            continue
+        allowed.append(move)
+
+    return allowed
 
 
 def move_wq(grid, square):
