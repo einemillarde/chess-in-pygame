@@ -8,5 +8,6 @@ This is a chess game i made using pygame, inspired by chess.com.
 
 I am planning to add more features in the future, but for now here is what it can do:
 - Highlight and only allow you to play legal moves
+- Flip the board for each turn
 
 Feel free to let me know if you have any suggestions
