@@ -1,63 +1,79 @@
-# TODO: add pinning pieces to the king
-
-import copy
-
 data = {}
+
+def find_king(grid, color):
+    target = 'wk' if color == 'w' else 'bk'
+    for yy in range(8):
+        for xx in range(8):
+            if grid[yy][xx] == target:
+                return (xx, yy)
+    return None
+
+def attacks_from(grid, x, y):
+    piece = grid[y][x]
+    if piece == "":
+        return set()
+    color = piece[0]
+    pt = piece[1]
+    res = set()
+    if pt == 'p':
+        if color == 'w':
+            if x > 0 and y > 0: res.add((x-1, y-1))
+            if x < 7 and y > 0: res.add((x+1, y-1))
+        else:
+            if x > 0 and y < 7: res.add((x-1, y+1))
+            if x < 7 and y < 7: res.add((x+1, y+1))
+        return res
+    if pt == 'n':
+        deltas = [(1,2),(2,1),(2,-1),(1,-2),(-1,-2),(-2,-1),(-2,1),(-1,2)]
+        for dx,dy in deltas:
+            tx,ty = x+dx, y+dy
+            if 0 <= tx <=7 and 0 <= ty <=7:
+                res.add((tx,ty))
+        return res
+    if pt in ('b','r','q'):
+        directions = []
+        if pt in ('b','q'):
+            directions += [(-1,-1),(-1,1),(1,-1),(1,1)]
+        if pt in ('r','q'):
+            directions += [(-1,0),(1,0),(0,-1),(0,1)]
+        for dx,dy in directions:
+            tx,ty = x,y
+            while True:
+                tx += dx; ty += dy
+                if tx < 0 or tx > 7 or ty < 0 or ty > 7: break
+                res.add((tx,ty))
+                if grid[ty][tx] != "": break
+        return res
+    if pt == 'k':
+        for dx in (-1,0,1):
+            for dy in (-1,0,1):
+                if dx == 0 and dy == 0: continue
+                tx,ty = x+dx, y+dy
+                if 0 <= tx <=7 and 0 <= ty <=7:
+                    res.add((tx,ty))
+        return res
+    return res
 
 def seen_by_black(grid):
     squares = set()
-
     for x in range(8):
         for y in range(8):
             piece = grid[y][x]
-            if piece == "" or piece[0] == "w":
+            if piece == "" or piece[0] == 'w':
                 continue
-
-            if piece[1] == "p":
-                if x > 0 and y < 7:
-                    squares.add((x - 1, y + 1))
-                if x < 7 and y < 7:
-                    squares.add((x + 1, y + 1))
-            elif piece[1] == "k":
-                for dx in range(-1, 2):
-                    for dy in range(-1, 2):
-                        if dx == 0 and dy == 0: continue
-                        x1, y1 = x + dx, y + dy
-                        if 0 <= x1 <= 7 and 0 <= y1 <= 7:
-                            squares.add((x1, y1))
-            else:
-                moves = calc_moves(grid, (x, y))
-                for move in moves:
-                    squares.add(move)
-
+            for mv in attacks_from(grid, x, y):
+                squares.add(mv)
     return squares
 
 def seen_by_white(grid):
     squares = set()
-
     for x in range(8):
         for y in range(8):
             piece = grid[y][x]
-            if piece == "" or piece[0] == "b":
+            if piece == "" or piece[0] == 'b':
                 continue
-
-            if piece[1] == "p":
-                if x > 0 and y > 0:
-                    squares.add((x - 1, y - 1))
-                if x < 7 and y > 0:
-                    squares.add((x + 1, y - 1))
-            elif piece[1] == "k":
-                for dx in range(-1, 2):
-                    for dy in range(-1, 2):
-                        if dx == 0 and dy == 0: continue
-                        x1, y1 = x + dx, y + dy
-                        if 0 <= x1 <= 7 and 0 <= y1 <= 7:
-                            squares.add((x1, y1))
-            else:
-                moves = calc_moves(grid, (x, y))
-                for move in moves:
-                    squares.add(move)
-
+            for mv in attacks_from(grid, x, y):
+                squares.add(mv)
     return squares
 
 
@@ -68,6 +84,7 @@ def clear_pawn_data():
 
 def next_turn():
     data["white to move"] = not data["white to move"]
+
 
 def calc_moves(grid, square):
     if not square: return []
@@ -125,7 +142,21 @@ def move_bp(grid, square):
         elif x != 7 and data[f"wp {x + 1} pushed 2 squares"]:
             squares.append((x + 1, 5))
 
-    return squares
+    allowed = []
+
+    for move in squares:
+        x0, y0 = move
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "bp"
+        bk_pos = find_king(grid, 'b')
+        if bk_pos and bk_pos not in seen_by_white(grid):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
+
+    return allowed
 
 def move_bk(grid, square):
     x, y = square
@@ -155,14 +186,16 @@ def move_bk(grid, square):
 
     allowed = []
 
-    for i, move in enumerate(squares):
+    for move in squares:
         x0, y0 = move
-        grid0 = copy.deepcopy(grid)
-        grid0[y0][x0] = "bk"
-        grid0[y][x] = ""
-        if move in seen_by_white(grid0):
-            continue
-        allowed.append(move)
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "bk"
+        if move not in seen_by_white(grid):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
 
     return allowed
 
@@ -186,7 +219,21 @@ def move_bq(grid, square):
                         break
                 squares.append((x0, y0))
 
-    return squares
+    allowed = []
+
+    for move in squares:
+        x0, y0 = move
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "bq"
+        bk_pos = find_king(grid, 'b')
+        if bk_pos and bk_pos not in seen_by_white(grid):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
+
+    return allowed
 
 def move_bb(grid, square):
     x, y = square
@@ -207,23 +254,48 @@ def move_bb(grid, square):
                         break
                 squares.append((x0, y0))
 
-    return squares
+    allowed = []
+
+    for move in squares:
+        x0, y0 = move
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "bb"
+        bk_pos = find_king(grid, 'b')
+        if bk_pos and bk_pos not in seen_by_white(grid):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
+
+    return allowed
 
 def move_bn(grid, square):
     x, y = square
     squares = []
+    deltas = [(1,2),(2,1),(2,-1),(1,-2),(-1,-2),(-2,-1),(-2,1),(-1,2)]
+    for dx, dy in deltas:
+        x0 = x + dx
+        y0 = y + dy
+        if 0 <= x0 <= 7 and 0 <= y0 <= 7:
+            if grid[y0][x0] == "" or grid[y0][x0][0] != 'b':
+                squares.append((x0, y0))
 
-    for i in range(4):
-        i0 = -2 if i == 0 else -1 if i == 1 else 1 if i == 2 else 2
-        for j in range(2):
-            j0 = (-1 if j == 0 else 1) if abs(i0) == 2 else (-2 if j == 0 else 2)
-            x0 = i0 + x
-            y0 = j0 + y
-            if x0 < 0 or x0 > 7 or y0 < 0 or y0 > 7: continue
-            if grid[y0][x0] != "" and grid[y0][x0][0] == "b": continue
-            squares.append((x0, y0))
+    allowed = []
 
-    return squares
+    for move in squares:
+        x0, y0 = move
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "bn"
+        bk_pos = find_king(grid, 'b')
+        if bk_pos and bk_pos not in seen_by_white(grid):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
+
+    return allowed
 
 def move_br(grid, square):
     x, y = square
@@ -245,7 +317,21 @@ def move_br(grid, square):
                         break
                 squares.append((x0, y0))
 
-    return squares
+    allowed = []
+
+    for move in squares:
+        x0, y0 = move
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "br"
+        bk_pos = find_king(grid, 'b')
+        if bk_pos and bk_pos not in seen_by_white(grid):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
+
+    return allowed
 
 def move_wp(grid, square):
     x, y = square
@@ -268,8 +354,21 @@ def move_wp(grid, square):
         elif x != 7 and data[f"bp {x + 1} pushed 2 squares"]:
             squares.append((x + 1, 2))
 
+    allowed = []
 
-    return squares
+    for move in squares:
+        x0, y0 = move
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "wp"
+        wk_pos = find_king(grid, 'w')
+        if wk_pos and wk_pos not in seen_by_black(grid):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
+
+    return allowed
 
 
 def move_wk(grid, square):
@@ -300,14 +399,16 @@ def move_wk(grid, square):
 
     allowed = []
 
-    for i, move in enumerate(squares):
+    for move in squares:
         x0, y0 = move
-        grid0 = copy.deepcopy(grid)
-        grid0[y0][x0] = "wk"
-        grid0[y][x] = ""
-        if move in seen_by_black(grid0):
-            continue
-        allowed.append(move)
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "wk"
+        if (find_king(grid, 'w') not in seen_by_black(grid)) and ((x0,y0) not in seen_by_black(grid)):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
 
     return allowed
 
@@ -332,7 +433,21 @@ def move_wq(grid, square):
                         break
                 squares.append((x0, y0))
 
-    return squares
+    allowed = []
+
+    for move in squares:
+        x0, y0 = move
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "wq"
+        wk_pos = find_king(grid, 'w')
+        if wk_pos and wk_pos not in seen_by_black(grid):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
+
+    return allowed
 
 def move_wb(grid, square):
     x, y = square
@@ -353,23 +468,48 @@ def move_wb(grid, square):
                         break
                 squares.append((x0, y0))
 
-    return squares
+    allowed = []
+
+    for move in squares:
+        x0, y0 = move
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "wb"
+        wk_pos = find_king(grid, 'w')
+        if wk_pos and wk_pos not in seen_by_black(grid):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
+
+    return allowed
 
 def move_wn(grid, square):
     x, y = square
     squares = []
+    deltas = [(1,2),(2,1),(2,-1),(1,-2),(-1,-2),(-2,-1),(-2,1),(-1,2)]
+    for dx, dy in deltas:
+        x0 = x + dx
+        y0 = y + dy
+        if 0 <= x0 <= 7 and 0 <= y0 <= 7:
+            if grid[y0][x0] == "" or grid[y0][x0][0] != 'w':
+                squares.append((x0, y0))
 
-    for i in range(4):
-        i0 = -2 if i == 0 else -1 if i == 1 else 1 if i == 2 else 2
-        for j in range(2):
-            j0 = (-1 if j == 0 else 1) if abs(i0) == 2 else (-2 if j == 0 else 2)
-            x0 = i0 + x
-            y0 = j0 + y
-            if x0 < 0 or x0 > 7 or y0 < 0 or y0 > 7: continue
-            if grid[y0][x0] != "" and grid[y0][x0][0] == "w": continue
-            squares.append((x0, y0))
+    allowed = []
 
-    return squares
+    for move in squares:
+        x0, y0 = move
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "wn"
+        wk_pos = find_king(grid, 'w')
+        if wk_pos and wk_pos not in seen_by_black(grid):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
+
+    return allowed
 
 def move_wr(grid, square):
     x, y = square
@@ -391,7 +531,21 @@ def move_wr(grid, square):
                         break
                 squares.append((x0, y0))
 
-    return squares
+    allowed = []
+
+    for move in squares:
+        x0, y0 = move
+        buff = grid[y0][x0]
+        orig = grid[y][x]
+        grid[y][x] = ""
+        grid[y0][x0] = "wr"
+        wk_pos = find_king(grid, 'w')
+        if wk_pos and wk_pos not in seen_by_black(grid):
+            allowed.append(move)
+        grid[y0][x0] = buff
+        grid[y][x] = orig
+
+    return allowed
 
 clear_pawn_data()
 
@@ -403,3 +557,6 @@ data["queenside wr was moved"] = False
 data["kingside wr was moved"] = False
 
 data["white to move"] = True
+
+data["wk pos"] = (4, 7)
+data["bk pos"] = (4, 0)

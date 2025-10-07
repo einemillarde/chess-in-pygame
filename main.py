@@ -177,9 +177,11 @@ while running:
 
             if grid[y0][x0] == "bk":
                 calc.data["bk was moved"] = True
+                calc.data["bk pos"] = (x, y)
 
             if grid[y0][x0] == "wk":
                 calc.data["wk was moved"] = True
+                calc.data["wk pos"] = (x, y)
 
             if grid[y0][x0] == "wr" and x0 == 0:
                 calc.data["queenside wr was moved"] = True
