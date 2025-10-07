@@ -1,3 +1,5 @@
+# TODO: add pinning pieces to the king
+
 import copy
 
 data = {}
@@ -158,7 +160,7 @@ def move_bk(grid, square):
         grid0 = copy.deepcopy(grid)
         grid0[y0][x0] = "bk"
         grid0[y][x] = ""
-        if move in seen_by_black(grid0):
+        if move in seen_by_white(grid0):
             continue
         allowed.append(move)
 
