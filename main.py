@@ -8,6 +8,7 @@ D_SQ_COL = "#b88762"
 D = (W, H) = (520, 520)
 SQ_D = (SQ_W, SQ_W) = (60, 60)
 SP_D = (SP_X, SP_Y) = (20, 20)
+REV_TUP = (8, 0)
 
 DEFAULT_GRID = [
     [ "br", "bn", "bb", "bq", "bk", "bb", "bn", "br" ],
@@ -44,7 +45,8 @@ def draw_grid():
             i = x + y * 8
             surf = pygame.Surface(SQ_D)
             surf.fill(L_SQ_COL if (i + y) % 2 == 0 else D_SQ_COL)
-            pos = (SP_X + x * SQ_W, SP_Y + y * SQ_W)
+            pos = (SP_X + x * SQ_W, SP_Y + y * SQ_W) if calc.data["white to move"] else (SP_X + SQ_W * (7 - x), SP_Y + SQ_W * (7 - y))
+            # pos = (7 - pos[0] + SQ_W * 8, 7 - pos[1] + SQ_W * 8)
             screen.blit(surf, pos)
 
             key = grid[y][x]
@@ -119,7 +121,7 @@ while running:
                 selected_square = None
                 continue
             x, y = (x - SP_X) // SQ_W, (y - SP_Y) // SQ_W
-            selected_square = x, y
+            selected_square = (x, y) if calc.data["white to move"] else (7 - x, 7 - y)
 
     # Loop
     clock.tick(60)
@@ -210,6 +212,8 @@ while running:
             grid[y][x] = grid[y0][x0]
             grid[y0][x0] = ""
             selected_square = None
+
+            calc.next_turn()
 
         if selected_square:
             x, y = selected_square

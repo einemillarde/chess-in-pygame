@@ -64,35 +64,42 @@ def clear_pawn_data():
         data[f"bp {i} pushed 2 squares"] = False
         data[f"wp {i} pushed 2 squares"] = False
 
+def next_turn():
+    data["white to move"] = not data["white to move"]
+
 def calc_moves(grid, square):
     if not square: return []
     x, y = square
-    match grid[y][x]:
-        case "bp":
-            squares = move_bp(grid, square)
-        case "bk":
-            squares = move_bk(grid, square)
-        case "bq":
-            squares = move_bq(grid, square)
-        case "bb":
-            squares = move_bb(grid, square)
-        case "bn":
-            squares = move_bn(grid, square)
-        case "br":
-            squares = move_br(grid, square)
-        case "wp":
-            squares = move_wp(grid, square)
-        case "wk":
-            squares = move_wk(grid, square)
-        case "wq":
-            squares = move_wq(grid, square)
-        case "wb":
-            squares = move_wb(grid, square)
-        case "wn":
-            squares = move_wn(grid, square)
-        case "wr":
-            squares = move_wr(grid, square)
-    return [] if not squares else squares
+    squares = []
+    if data["white to move"]:
+        match grid[y][x]:
+            case "wp":
+                squares = move_wp(grid, square)
+            case "wk":
+                squares = move_wk(grid, square)
+            case "wq":
+                squares = move_wq(grid, square)
+            case "wb":
+                squares = move_wb(grid, square)
+            case "wn":
+                squares = move_wn(grid, square)
+            case "wr":
+                squares = move_wr(grid, square)
+    else:
+        match grid[y][x]:
+            case "bp":
+                squares = move_bp(grid, square)
+            case "bk":
+                squares = move_bk(grid, square)
+            case "bq":
+                squares = move_bq(grid, square)
+            case "bb":
+                squares = move_bb(grid, square)
+            case "bn":
+                squares = move_bn(grid, square)
+            case "br":
+                squares = move_br(grid, square)
+    return squares
 
 
 def move_bp(grid, square):
@@ -385,9 +392,12 @@ def move_wr(grid, square):
     return squares
 
 clear_pawn_data()
+
 data["bk was moved"] = False
 data["queenside br was moved"] = False
 data["kingside br was moved"] = False
 data["wk was moved"] = False
 data["queenside wr was moved"] = False
 data["kingside wr was moved"] = False
+
+data["white to move"] = True
