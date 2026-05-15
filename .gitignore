@@ -1,7 +1,0 @@
-__pycache__/
-*.pyc
-build/
-dist/
-Screenshot 2026-02-03 182049.png
-main.spec
-.gitignore
