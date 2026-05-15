@@ -1,5 +1,6 @@
 import pygame
 import chess_calculator as calc
+import copy
 
 # Constants
 L_SQ_COL = "#edd6b0"
@@ -21,23 +22,6 @@ DEFAULT_GRID = [
     [ "wr", "wn", "wb", "wq", "wk", "wb", "wn", "wr" ],
 ]
 
-# Global variables
-grid = DEFAULT_GRID
-# grid = [
-#     [ "", "", "", "", "", "", "", "" ],
-#     [ "", "", "", "", "", "", "", "" ],
-#     [ "", "", "", "", "", "", "", "" ],
-#     [ "", "", "", "", "", "", "", "" ],
-#     [ "", "", "", "", "", "", "", "" ],
-#     [ "", "", "", "", "", "", "", "" ],
-#     [ "", "", "", "", "", "", "", "" ],
-#     [ "", "", "", "", "", "", "", "" ],
-# ]
-selected_square = None
-movable_squares = []
-choose = False
-prev_selected_square = None
-
 # Functions
 def draw_grid():
     for y in range(8):
@@ -46,7 +30,6 @@ def draw_grid():
             surf = pygame.Surface(SQ_D)
             surf.fill(L_SQ_COL if (i + y) % 2 == 0 else D_SQ_COL)
             pos = (SP_X + x * SQ_W, SP_Y + y * SQ_W) if calc.data["white to move"] else (SP_X + SQ_W * (7 - x), SP_Y + SQ_W * (7 - y))
-            # pos = (7 - pos[0] + SQ_W * 8, 7 - pos[1] + SQ_W * 8)
             screen.blit(surf, pos)
 
             key = grid[y][x]
@@ -71,37 +54,137 @@ def draw_grid():
             screen.blit(surf, pos)
 
 def display_choose():
-    pos = (SP_X + choose[0] * SQ_W, SP_Y + choose[1] * SQ_W)
-    dims = (SQ_W, SQ_W * 4)
-    surf = pygame.Surface(dims)
-    surf.fill("#ffffff")
+    if choose:
+        pos = (SP_X + choose[0] * SQ_W, SP_Y) if calc.data["white to move"] else (SP_X + SQ_W * (7 - choose[0]), SP_Y)
+        dims = (SQ_W, SQ_W * 4)
+        surf = pygame.Surface(dims)
+        surf.fill("#ffffff")
 
-    col = "w" if choose[1] == 0 else "b"
+        col = "w" if choose[1] == 0 else "b"
 
-    im_q = pygame.image.load(f"pieces/{col}q.png")
-    im_n = pygame.image.load(f"pieces/{col}n.png")
-    im_r = pygame.image.load(f"pieces/{col}r.png")
-    im_b = pygame.image.load(f"pieces/{col}b.png")
+        im_q = pygame.image.load(f"pieces/{col}q.png")
+        im_n = pygame.image.load(f"pieces/{col}n.png")
+        im_r = pygame.image.load(f"pieces/{col}r.png")
+        im_b = pygame.image.load(f"pieces/{col}b.png")
 
-    im_q = pygame.transform.scale(im_q, SQ_D)
-    im_n = pygame.transform.scale(im_n, SQ_D)
-    im_r = pygame.transform.scale(im_r, SQ_D)
-    im_b = pygame.transform.scale(im_b, SQ_D)
+        im_q = pygame.transform.scale(im_q, SQ_D)
+        im_n = pygame.transform.scale(im_n, SQ_D)
+        im_r = pygame.transform.scale(im_r, SQ_D)
+        im_b = pygame.transform.scale(im_b, SQ_D)
 
-    if col == "w":
         surf.blit(im_q, (0, 0))
         surf.blit(im_n, (0, SQ_W))
         surf.blit(im_r, (0, SQ_W * 2))
         surf.blit(im_b, (0, SQ_W * 3))
-    else:
-        surf.blit(im_b, (0, 0))
-        surf.blit(im_r, (0, SQ_W))
-        surf.blit(im_n, (0, SQ_W * 2))
-        surf.blit(im_q, (0, SQ_W * 3))
 
-    screen.blit(surf, pos)
+        screen.blit(surf, pos)
+
+def fen(grid, white_to_move, castling, en_passant, halfmove, fullmove):
+    rows = []
+
+    for row in grid:
+        fen_row = ""
+        empty_count = 0
+
+        for piece in row:
+            if piece == "":
+                empty_count += 1
+            else:
+                if empty_count > 0:
+                    fen_row += str(empty_count)
+                    empty_count = 0
+
+                color = piece[0]
+                piece_type = piece[1]
+
+                fen_piece = {
+                    "p": "p",
+                    "r": "r",
+                    "n": "n",
+                    "b": "b",
+                    "q": "q",
+                    "k": "k",
+                }[piece_type]
+
+                if color == "w":
+                    fen_piece = fen_piece.upper()
+
+                fen_row += fen_piece
+
+        if empty_count > 0:
+            fen_row += str(empty_count)
+
+        rows.append(fen_row)
+
+    board_part = "/".join(rows)
+
+    side_to_move = "w" if white_to_move else "b"
+
+    return f"{board_part} {side_to_move} {castling} {en_passant} {halfmove} {fullmove}"
+
+def dead_position(grid):
+    pieces = []
+
+    for row in grid:
+        for piece in row:
+            if piece != "":
+                pieces.append(piece)
+
+    non_kings = [p for p in pieces if p[1] != "k"]
+
+    if len(non_kings) == 0:
+        return True
+
+    if len(non_kings) == 1:
+        return non_kings[0][1] in ("b", "n")
+
+    if len(non_kings) == 2:
+        return (
+            non_kings[0][1] == "b"
+            and non_kings[1][1] == "b"
+        )
+
+    return False
+
+# Global variables
+grid = copy.deepcopy(DEFAULT_GRID)
+# grid = [
+#     [ "", "", "", "", "", "", "", "" ],
+#     [ "", "", "", "", "", "", "", "" ],
+#     [ "", "", "", "", "", "", "", "" ],
+#     [ "", "", "", "", "", "", "", "" ],
+#     [ "", "", "", "", "", "", "", "" ],
+#     [ "", "br", "", "", "", "", "", "" ],
+#     [ "", "", "", "", "", "", "", "" ],
+#     [ "wr", "", "", "", "wk", "", "", "wr" ],
+# ]
+selected_square = None
+movable_squares = []
+choose = None
+prev_selected_square = None
+count = 0
+fullmove = 1
+halfmove = 0
+castling = "KQkq"
+en_passant = "-"
+history = dict()
+history[fen(grid, True, castling, en_passant, halfmove, fullmove)] = 1
 
 # Main Logic
+calc.clear_pawn_data()
+
+calc.data["bk was moved"] = False if grid[0][4] == "bk" else True
+calc.data["queenside br was moved"] = False if grid[0][0] == "br" else True
+calc.data["kingside br was moved"] = False if grid[0][7] == "br" else True
+calc.data["wk was moved"] = False if grid[7][4] == "wk" else True
+calc.data["queenside wr was moved"] = False if grid[7][0] == "wr" else True
+calc.data["kingside wr was moved"] = False if grid[7][7] == "wr" else True
+
+calc.data["white to move"] = True
+
+calc.data["wk pos"] = (4, 7)
+calc.data["bk pos"] = (4, 0)
+
 pygame.init()
 
 screen = pygame.display.set_mode(D)
@@ -130,9 +213,9 @@ while running:
         choose = (grid[0].index("wp"), 0)
     except ValueError:
         try:
-            choose = (grid[7].index("bp"), 4)
+            choose = (grid[7].index("bp"), 7)
         except ValueError:
-            choose = False
+            choose = None
 
     if choose:
         if selected_square and selected_square[0] == choose[0]:
@@ -156,9 +239,10 @@ while running:
                         grid[7][choose[0]] = "br"
                     case 4:
                         grid[7][choose[0]] = "bb"
+            calc.next_turn()
         selected_square = None
     else:
-        if selected_square in movable_squares:
+        if selected_square in movable_squares and selected_square and prev_selected_square:
             calc.clear_pawn_data()
             x, y = selected_square
             x0, y0 = prev_selected_square
@@ -178,22 +262,33 @@ while running:
             if grid[y0][x0] == "bk":
                 calc.data["bk was moved"] = True
                 calc.data["bk pos"] = (x, y)
+                castling = castling.replace("q", "")
+                castling = castling.replace("k", "")
 
             if grid[y0][x0] == "wk":
                 calc.data["wk was moved"] = True
                 calc.data["wk pos"] = (x, y)
+                castling = castling.replace("Q", "")
+                castling = castling.replace("K", "")
 
             if grid[y0][x0] == "wr" and x0 == 0:
                 calc.data["queenside wr was moved"] = True
+                castling = castling.replace("Q", "")
 
             if grid[y0][x0] == "wr" and x0 == 7:
                 calc.data["kingside wr was moved"] = True
+                castling = castling.replace("K", "")
 
             if grid[y0][x0] == "br" and x0 == 0:
                 calc.data["queenside br was moved"] = True
+                castling = castling.replace("q", "")
 
             if grid[y0][x0] == "br" and x0 == 7:
                 calc.data["kingside br was moved"] = True
+                castling = castling.replace("k", "")
+
+            if castling == "":
+                castling = "-"
 
             if grid[y0][x0] == "wk" and x == x0 + 2:
                 grid[7][5] = "wr"
@@ -211,11 +306,72 @@ while running:
                 grid[0][3] = "br"
                 grid[0][0] = ""
 
+            is_capture = grid[y][x] != ""
+            is_pawn_advance = grid[y0][x0][1] == "p"
+            is_en_passant = grid[y0][x0][1] == "p" and x != x0 and grid[y][x] == ""
+
+            if is_capture or is_en_passant or is_pawn_advance:
+                halfmove = 0
+            else:
+                halfmove += 1
+
             grid[y][x] = grid[y0][x0]
             grid[y0][x0] = ""
             selected_square = None
 
-            calc.next_turn()
+            if not "wp" in grid[0] and not "bp" in grid[7]:
+                calc.next_turn()
+
+            if calc.data["white to move"]:
+                fullmove += 1
+                white_legal_moves = []
+
+                for x in range(8):
+                    for y in range(8):
+                        square = (x, y)
+                        piece = grid[y][x]
+                        if piece != "" and piece[0] == "w":
+                            white_legal_moves += calc.calc_moves(grid, square)
+
+                if not white_legal_moves:
+                    if calc.data["wk pos"] in calc.seen_by_black(grid):
+                        print("black won by checkmate")
+                        running = False
+                    else:
+                        print("draw by stalemate")
+                        running = False
+            else:
+                black_legal_moves = []
+
+                for x in range(8):
+                    for y in range(8):
+                        square = (x, y)
+                        piece = grid[y][x]
+                        if piece != "" and piece[0] == "b":
+                            black_legal_moves += calc.calc_moves(grid, square)
+
+                if not black_legal_moves:
+                    if calc.data["bk pos"] in calc.seen_by_white(grid):
+                        print("white won by checkmate")
+                        running = False
+                    else:
+                        print("draw by stalemate")
+                        running = False
+
+            fen_str = fen(grid, calc.data["white to move"], castling, en_passant, halfmove, fullmove)
+            repetition_key = " ".join(fen_str.split(" ")[:4])
+            history[repetition_key] = history.get(repetition_key, 0) + 1
+            if history[repetition_key] >= 3:
+                print("draw by repetition")
+                running = False
+
+            if halfmove >= 100:
+                print("draw by 50-move rule")
+                running = False
+
+            if dead_position(grid):
+                print("draw by dead position")
+                running = False
 
         if selected_square:
             x, y = selected_square
@@ -229,7 +385,7 @@ while running:
     # Draw
     draw_grid()
 
-    if choose: display_choose()
+    display_choose()
 
     pygame.display.update()
 

@@ -6,10 +6,16 @@ This is a chess game i made using pygame, inspired by chess.com.
 
 ### Features
 
-I am planning to add more features in the future, but for now here is what it can do:
+Here is what it can do:
 - Highlight and only allow you to play legal moves
 - Flip the board for each turn
-- Chess clock
+
+Here is what i plan to add:
+- resignation and draws
+- chess clock
+- game end and restart screen
+- exportable games
+- maybe multiplayer
 
 ### Feedback
 

@@ -546,17 +546,3 @@ def move_wr(grid, square):
         grid[y][x] = orig
 
     return allowed
-
-clear_pawn_data()
-
-data["bk was moved"] = False
-data["queenside br was moved"] = False
-data["kingside br was moved"] = False
-data["wk was moved"] = False
-data["queenside wr was moved"] = False
-data["kingside wr was moved"] = False
-
-data["white to move"] = True
-
-data["wk pos"] = (4, 7)
-data["bk pos"] = (4, 0)
